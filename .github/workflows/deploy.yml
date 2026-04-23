@@ -1,0 +1,131 @@
+name: Deploy to server
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  frontend-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build project
+        run: npm run build
+        working-directory: frontend
+
+      - name: Clean temp directory
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            rm -rf /tmp/marjakartta-frontend
+            mkdir -p /tmp/marjakartta-frontend
+
+      - name: Upload artifacts to server
+        uses: easingthemes/ssh-deploy@main
+        with:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          REMOTE_HOST: ${{ secrets.SERVER_IP }}
+          REMOTE_USER: ${{ secrets.SERVER_USER }}
+          TARGET: "/tmp/marjakartta-frontend"
+          SOURCE: "./frontend/dist/"
+
+      - name: Swap deployment and reload Caddy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            sudo rm -rf /var/www/marjakartta/frontend/
+            sudo mv /tmp/marjakartta-frontend /var/www/marjakartta/frontend/
+            sudo systemctl reload caddy
+
+  backend-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.25"
+          cache: true
+
+      - name: Build backend
+        run: |
+          cd backend
+          go build -o marjakartta ./cmd
+
+      - name: Clean temp directory
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            rm -rf /tmp/marjakartta-backend
+            mkdir -p /tmp/marjakartta-backend
+
+      - name: Upload backend binary to server
+        uses: easingthemes/ssh-deploy@main
+        with:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          REMOTE_HOST: ${{ secrets.SERVER_IP }}
+          REMOTE_USER: ${{ secrets.SERVER_USER }}
+          TARGET: /tmp/marjakartta-backend
+          SOURCE: "./backend/marjakartta"
+
+      - name: Upload migration files to server
+        uses: easingthemes/ssh-deploy@main
+        with:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          REMOTE_HOST: ${{ secrets.SERVER_IP }}
+          REMOTE_USER: ${{ secrets.SERVER_USER }}
+          TARGET: /tmp/marjakartta-backend/migration
+          SOURCE: "./backend/db/migration/"
+
+      - name: Deploy backend and run migrations
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            sudo mv /tmp/marjakartta-backend/marjakartta /var/www/marjakartta/backend/marjakartta
+            sudo chmod +x /var/www/marjakartta/backend/marjakartta
+            sudo rm -rf /var/www/marjakartta/backend/db/migration/
+            sudo mkdir -p /var/www/marjakartta/backend/db/
+            sudo mv /tmp/marjakartta-backend/migration /var/www/marjakartta/backend/db/migration
+            cd /var/www/marjakartta/backend
+            source .env
+            goose -dir db/migration postgres "$DATABASE_URL" up
+
+      - name: Restart backend service
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            sudo systemctl restart marjakartta-api
