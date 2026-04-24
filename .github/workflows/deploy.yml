@@ -88,14 +88,23 @@ jobs:
             rm -rf /tmp/marjakartta-backend
             mkdir -p /tmp/marjakartta-backend
 
-      - name: Upload backend binaries to server
+      - name: Upload backend binary to server
         uses: easingthemes/ssh-deploy@main
         with:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           REMOTE_HOST: ${{ secrets.SERVER_IP }}
           REMOTE_USER: ${{ secrets.SERVER_USER }}
           TARGET: /tmp/marjakartta-backend
-          SOURCE: "./backend/marjakartta,./backend/seed"
+          SOURCE: "./backend/marjakartta"
+
+      - name: Upload seed binary to server
+        uses: easingthemes/ssh-deploy@main
+        with:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          REMOTE_HOST: ${{ secrets.SERVER_IP }}
+          REMOTE_USER: ${{ secrets.SERVER_USER }}
+          TARGET: /tmp/marjakartta-backend
+          SOURCE: "./backend/seed"
 
       - name: Upload migration files to server
         uses: easingthemes/ssh-deploy@main
