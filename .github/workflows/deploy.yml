@@ -119,7 +119,7 @@ jobs:
             sudo mv /tmp/marjakartta-backend/migration /var/www/marjakartta/backend/db/migration
             cd /var/www/marjakartta/backend
             source .env
-            goose -dir db/migration postgres "$DATABASE_URL" up
+            goose -dir db/migration sqlite3 "$DATABASE_URL" up
 
       - name: Restart backend service
         uses: appleboy/ssh-action@v1.0.3
