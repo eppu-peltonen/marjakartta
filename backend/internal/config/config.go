@@ -1,6 +1,10 @@
 package config
 
-import "os"
+import (
+	"os"
+
+	"github.com/joho/godotenv"
+)
 
 type Config struct {
 	DBSource      string
@@ -9,6 +13,8 @@ type Config struct {
 }
 
 func Load() Config {
+	godotenv.Load()
+
 	return Config{
 		DBSource:      getEnv("DATABASE_URL", "marjakartta.db"),
 		ServerAddress: getEnv("SERVER_ADDRESS", ":3000"),
