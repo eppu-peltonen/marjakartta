@@ -130,7 +130,9 @@ jobs:
             sudo mv /tmp/marjakartta-backend/migration /var/www/marjakartta/backend/db/migration
             sudo chown -R $USER:$USER /var/www/marjakartta/data/
             cd /var/www/marjakartta/backend
+            set -a
             source .env
+            set +a
             export PATH=$PATH:/home/ubuntu/go/bin
             goose -dir db/migration sqlite3 "$DATABASE_URL" up
 
