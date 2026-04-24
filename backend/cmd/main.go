@@ -35,7 +35,7 @@ func main() {
 
 	queries := sqlc.New(db)
 
-	router := api.NewRouter(queries, tokenMaker)
+	router := api.NewRouter(queries, tokenMaker, cfg.CORSOrigin)
 
 	log.Printf("starting server on %s", cfg.ServerAddress)
 	if err := router.Run(cfg.ServerAddress); err != nil {

@@ -7,9 +7,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter(queries *sqlc.Queries, tokenMaker *auth.TokenMaker) *gin.Engine {
+func NewRouter(queries *sqlc.Queries, tokenMaker *auth.TokenMaker, corsOrigin string) *gin.Engine {
 	router := gin.Default()
-	router.Use(CORSMiddleware())
+	router.Use(CORSMiddleware(corsOrigin))
 
 	authHandler := NewAuthHandler(queries, tokenMaker)
 	pinHandler := NewPinHandler(queries)

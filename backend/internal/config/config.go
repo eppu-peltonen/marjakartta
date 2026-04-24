@@ -10,6 +10,7 @@ type Config struct {
 	DBSource      string
 	ServerAddress string
 	JWTSecret     string
+	CORSOrigin    string
 }
 
 func Load() Config {
@@ -19,6 +20,7 @@ func Load() Config {
 		DBSource:      getEnv("DATABASE_URL", "marjakartta.db"),
 		ServerAddress: getEnv("SERVER_ADDRESS", ":3000"),
 		JWTSecret:     getEnv("JWT_SECRET", ""),
+		CORSOrigin:    getEnv("CORS_ORIGIN", "*"),
 	}
 }
 
