@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 )
 
 type TokenMaker struct {
@@ -13,8 +12,8 @@ type TokenMaker struct {
 }
 
 type Claims struct {
-	UserID   uuid.UUID `json:"userId"`
-	Username string    `json:"username"`
+	UserID   string `json:"userId"`
+	Username string `json:"username"`
 	jwt.RegisteredClaims
 }
 
@@ -25,7 +24,7 @@ func NewTokenMaker(secret string) (*TokenMaker, error) {
 	return &TokenMaker{secret: []byte(secret)}, nil
 }
 
-func (tm *TokenMaker) CreateToken(userID uuid.UUID, username string, duration time.Duration) (string, error) {
+func (tm *TokenMaker) CreateToken(userID string, username string, duration time.Duration) (string, error) {
 	claims := Claims{
 		UserID:   userID,
 		Username: username,

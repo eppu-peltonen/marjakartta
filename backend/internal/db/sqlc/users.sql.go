@@ -7,24 +7,22 @@ package sqlc
 
 import (
 	"context"
-
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (username, password_hash)
-VALUES ($1, $2)
+INSERT INTO users (id, username, password_hash)
+VALUES (?, ?, ?)
 RETURNING id, username, password_hash, created_at
 `
 
 type CreateUserParams struct {
+	ID           string
 	Username     string
 	PasswordHash string
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, createUser, arg.Username, arg.PasswordHash)
+	row := q.db.QueryRowContext(ctx, createUser, arg.ID, arg.Username, arg.PasswordHash)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -38,17 +36,17 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 const getUserByID = `-- name: GetUserByID :one
 SELECT id, username, created_at
 FROM users
-WHERE id = $1
+WHERE id = ?
 `
 
 type GetUserByIDRow struct {
-	ID        uuid.UUID
+	ID        string
 	Username  string
-	CreatedAt pgtype.Timestamptz
+	CreatedAt string
 }
 
-func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error) {
-	row := q.db.QueryRow(ctx, getUserByID, id)
+func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getUserByID, id)
 	var i GetUserByIDRow
 	err := row.Scan(&i.ID, &i.Username, &i.CreatedAt)
 	return i, err
@@ -57,11 +55,11 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow
 const getUserByUsername = `-- name: GetUserByUsername :one
 SELECT id, username, password_hash, created_at
 FROM users
-WHERE username = $1
+WHERE username = ?
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
-	row := q.db.QueryRow(ctx, getUserByUsername, username)
+	row := q.db.QueryRowContext(ctx, getUserByUsername, username)
 	var i User
 	err := row.Scan(
 		&i.ID,

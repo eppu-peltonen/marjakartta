@@ -1,7 +1,7 @@
 package main
 
 import (
-	"context"
+	"database/sql"
 	"log"
 
 	"marjakartta/internal/api"
@@ -9,7 +9,7 @@ import (
 	"marjakartta/internal/config"
 	"marjakartta/internal/db/sqlc"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	_ "modernc.org/sqlite"
 )
 
 func main() {
@@ -24,13 +24,16 @@ func main() {
 		log.Fatalf("cannot create token maker: %v", err)
 	}
 
-	pool, err := pgxpool.New(context.Background(), cfg.DBSource)
+	db, err := sql.Open("sqlite", cfg.DBSource)
 	if err != nil {
-		log.Fatalf("cannot connect to db: %v", err)
+		log.Fatalf("cannot open db: %v", err)
 	}
-	defer pool.Close()
+	defer db.Close()
 
-	queries := sqlc.New(pool)
+	db.Exec("PRAGMA journal_mode=WAL")
+	db.Exec("PRAGMA foreign_keys=ON")
+
+	queries := sqlc.New(db)
 
 	router := api.NewRouter(queries, tokenMaker)
 

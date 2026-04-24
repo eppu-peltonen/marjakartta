@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"errors"
 	"net/http"
 
@@ -9,8 +10,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type PinHandler struct {
@@ -31,22 +30,15 @@ type pinResponse struct {
 	UpdatedAt string  `json:"updatedAt"`
 }
 
-func formatTimestamptz(t pgtype.Timestamptz) string {
-	if t.Valid {
-		return t.Time.UTC().Format("2006-01-02T15:04:05Z")
-	}
-	return ""
-}
-
 func toPinResponse(p sqlc.BerryPin) pinResponse {
 	return pinResponse{
-		ID:        p.ID.String(),
+		ID:        p.ID,
 		Lat:       p.Lat,
 		Lng:       p.Lng,
 		BerryType: p.BerryType,
 		Notes:     p.Notes,
-		CreatedAt: formatTimestamptz(p.CreatedAt),
-		UpdatedAt: formatTimestamptz(p.UpdatedAt),
+		CreatedAt: p.CreatedAt,
+		UpdatedAt: p.UpdatedAt,
 	}
 }
 
@@ -77,15 +69,15 @@ func (h *PinHandler) List(c *gin.Context) {
 }
 
 func (h *PinHandler) Get(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
+	id := c.Param("id")
+	if _, err := uuid.Parse(id); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid pin id"})
 		return
 	}
 
 	pin, err := h.queries.GetPin(c, id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"message": "pin not found"})
 			return
 		}
@@ -106,6 +98,7 @@ func (h *PinHandler) Create(c *gin.Context) {
 	claims := c.MustGet(authPayloadKey).(*auth.Claims)
 
 	pin, err := h.queries.CreatePin(c, sqlc.CreatePinParams{
+		ID:        uuid.New().String(),
 		UserID:    claims.UserID,
 		Lat:       req.Lat,
 		Lng:       req.Lng,
@@ -121,8 +114,8 @@ func (h *PinHandler) Create(c *gin.Context) {
 }
 
 func (h *PinHandler) Update(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
+	id := c.Param("id")
+	if _, err := uuid.Parse(id); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid pin id"})
 		return
 	}
@@ -137,7 +130,7 @@ func (h *PinHandler) Update(c *gin.Context) {
 
 	existing, err := h.queries.GetPin(c, id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"message": "pin not found"})
 			return
 		}
@@ -160,9 +153,9 @@ func (h *PinHandler) Update(c *gin.Context) {
 	}
 
 	pin, err := h.queries.UpdatePin(c, sqlc.UpdatePinParams{
-		ID:        id,
 		Notes:     notes,
 		BerryType: berryType,
+		ID:        id,
 		UserID:    claims.UserID,
 	})
 	if err != nil {
@@ -174,15 +167,15 @@ func (h *PinHandler) Update(c *gin.Context) {
 }
 
 func (h *PinHandler) Delete(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
+	id := c.Param("id")
+	if _, err := uuid.Parse(id); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid pin id"})
 		return
 	}
 
 	claims := c.MustGet(authPayloadKey).(*auth.Claims)
 
-	err = h.queries.DeletePin(c, sqlc.DeletePinParams{
+	err := h.queries.DeletePin(c, sqlc.DeletePinParams{
 		ID:     id,
 		UserID: claims.UserID,
 	})

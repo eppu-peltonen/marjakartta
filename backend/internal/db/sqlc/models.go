@@ -4,25 +4,20 @@
 
 package sqlc
 
-import (
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
-)
-
 type BerryPin struct {
-	ID        uuid.UUID
-	UserID    uuid.UUID
+	ID        string
+	UserID    string
 	Lat       float64
 	Lng       float64
 	BerryType string
 	Notes     string
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	CreatedAt string
+	UpdatedAt string
 }
 
 type User struct {
-	ID           uuid.UUID
+	ID           string
 	Username     string
 	PasswordHash string
-	CreatedAt    pgtype.Timestamptz
+	CreatedAt    string
 }

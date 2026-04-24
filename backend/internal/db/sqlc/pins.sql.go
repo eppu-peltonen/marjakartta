@@ -7,18 +7,17 @@ package sqlc
 
 import (
 	"context"
-
-	"github.com/google/uuid"
 )
 
 const createPin = `-- name: CreatePin :one
-INSERT INTO berry_pins (user_id, lat, lng, berry_type, notes)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO berry_pins (id, user_id, lat, lng, berry_type, notes)
+VALUES (?, ?, ?, ?, ?, ?)
 RETURNING id, user_id, lat, lng, berry_type, notes, created_at, updated_at
 `
 
 type CreatePinParams struct {
-	UserID    uuid.UUID
+	ID        string
+	UserID    string
 	Lat       float64
 	Lng       float64
 	BerryType string
@@ -26,7 +25,8 @@ type CreatePinParams struct {
 }
 
 func (q *Queries) CreatePin(ctx context.Context, arg CreatePinParams) (BerryPin, error) {
-	row := q.db.QueryRow(ctx, createPin,
+	row := q.db.QueryRowContext(ctx, createPin,
+		arg.ID,
 		arg.UserID,
 		arg.Lat,
 		arg.Lng,
@@ -49,27 +49,27 @@ func (q *Queries) CreatePin(ctx context.Context, arg CreatePinParams) (BerryPin,
 
 const deletePin = `-- name: DeletePin :exec
 DELETE FROM berry_pins
-WHERE id = $1 AND user_id = $2
+WHERE id = ? AND user_id = ?
 `
 
 type DeletePinParams struct {
-	ID     uuid.UUID
-	UserID uuid.UUID
+	ID     string
+	UserID string
 }
 
 func (q *Queries) DeletePin(ctx context.Context, arg DeletePinParams) error {
-	_, err := q.db.Exec(ctx, deletePin, arg.ID, arg.UserID)
+	_, err := q.db.ExecContext(ctx, deletePin, arg.ID, arg.UserID)
 	return err
 }
 
 const getPin = `-- name: GetPin :one
 SELECT id, user_id, lat, lng, berry_type, notes, created_at, updated_at
 FROM berry_pins
-WHERE id = $1
+WHERE id = ?
 `
 
-func (q *Queries) GetPin(ctx context.Context, id uuid.UUID) (BerryPin, error) {
-	row := q.db.QueryRow(ctx, getPin, id)
+func (q *Queries) GetPin(ctx context.Context, id string) (BerryPin, error) {
+	row := q.db.QueryRowContext(ctx, getPin, id)
 	var i BerryPin
 	err := row.Scan(
 		&i.ID,
@@ -91,7 +91,7 @@ ORDER BY created_at DESC
 `
 
 func (q *Queries) ListPins(ctx context.Context) ([]BerryPin, error) {
-	rows, err := q.db.Query(ctx, listPins)
+	rows, err := q.db.QueryContext(ctx, listPins)
 	if err != nil {
 		return nil, err
 	}
@@ -113,6 +113,9 @@ func (q *Queries) ListPins(ctx context.Context) ([]BerryPin, error) {
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -121,23 +124,23 @@ func (q *Queries) ListPins(ctx context.Context) ([]BerryPin, error) {
 
 const updatePin = `-- name: UpdatePin :one
 UPDATE berry_pins
-SET notes = $2, berry_type = $3, updated_at = now()
-WHERE id = $1 AND user_id = $4
+SET notes = ?, berry_type = ?, updated_at = datetime('now')
+WHERE id = ? AND user_id = ?
 RETURNING id, user_id, lat, lng, berry_type, notes, created_at, updated_at
 `
 
 type UpdatePinParams struct {
-	ID        uuid.UUID
 	Notes     string
 	BerryType string
-	UserID    uuid.UUID
+	ID        string
+	UserID    string
 }
 
 func (q *Queries) UpdatePin(ctx context.Context, arg UpdatePinParams) (BerryPin, error) {
-	row := q.db.QueryRow(ctx, updatePin,
-		arg.ID,
+	row := q.db.QueryRowContext(ctx, updatePin,
 		arg.Notes,
 		arg.BerryType,
+		arg.ID,
 		arg.UserID,
 	)
 	var i BerryPin

@@ -17,10 +17,10 @@ sqlc:
 	sqlc generate
 
 migrate-up:
-	goose -dir db/migration postgres "$(DATABASE_URL)" up
+	goose -dir db/migration sqlite3 "$(DATABASE_URL)" up
 
 migrate-down:
-	goose -dir db/migration postgres "$(DATABASE_URL)" down
+	goose -dir db/migration sqlite3 "$(DATABASE_URL)" down
 
 migrate-create:
 	goose -dir db/migration create $(NAME) sql

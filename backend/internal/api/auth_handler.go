@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"errors"
 	"net/http"
 	"time"
@@ -9,7 +10,6 @@ import (
 	"marjakartta/internal/db/sqlc"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -46,7 +46,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	user, err := h.queries.GetUserByUsername(c, req.Username)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusUnauthorized, gin.H{"message": "invalid credentials"})
 			return
 		}
@@ -67,7 +67,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	c.JSON(http.StatusOK, authResponse{
 		User: userResponse{
-			ID:       user.ID.String(),
+			ID:       user.ID,
 			Username: user.Username,
 		},
 		Token: token,
@@ -85,7 +85,7 @@ func (h *AuthHandler) Me(c *gin.Context) {
 
 	c.JSON(http.StatusOK, authResponse{
 		User: userResponse{
-			ID:       claims.UserID.String(),
+			ID:       claims.UserID,
 			Username: claims.Username,
 		},
 		Token: token,

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"os"
@@ -9,8 +10,10 @@ import (
 	"marjakartta/internal/config"
 	"marjakartta/internal/db/sqlc"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+
+	_ "modernc.org/sqlite"
 )
 
 func main() {
@@ -23,19 +26,22 @@ func main() {
 
 	cfg := config.Load()
 
-	pool, err := pgxpool.New(context.Background(), cfg.DBSource)
+	db, err := sql.Open("sqlite", cfg.DBSource)
 	if err != nil {
-		log.Fatalf("cannot connect to db: %v", err)
+		log.Fatalf("cannot open db: %v", err)
 	}
-	defer pool.Close()
+	defer db.Close()
+
+	db.Exec("PRAGMA foreign_keys=ON")
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Fatalf("cannot hash password: %v", err)
 	}
 
-	queries := sqlc.New(pool)
+	queries := sqlc.New(db)
 	user, err := queries.CreateUser(context.Background(), sqlc.CreateUserParams{
+		ID:           uuid.New().String(),
 		Username:     username,
 		PasswordHash: string(hash),
 	})

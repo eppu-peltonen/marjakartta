@@ -10,7 +10,7 @@ type Config struct {
 
 func Load() Config {
 	return Config{
-		DBSource:      getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/marjakartta?sslmode=disable"),
+		DBSource:      getEnv("DATABASE_URL", "marjakartta.db"),
 		ServerAddress: getEnv("SERVER_ADDRESS", ":3000"),
 		JWTSecret:     getEnv("JWT_SECRET", ""),
 	}
